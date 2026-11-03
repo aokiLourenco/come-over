@@ -5,12 +5,12 @@ import { useTimers, type SceneProps } from "./shared";
 
 const SPOTS = ["#FF4F9A", "#FFC928", "#7FE3FF", "#FFFFFF", "#8A7BFF", "#37E3B0"];
 
-export function DiscoScene({ reduced, sfx, confetti, setHint, finish }: SceneProps) {
+export function DiscoScene({ t, reduced, sfx, confetti, setHint, finish }: SceneProps) {
   const [on, setOn] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const later = useTimers();
 
-  useEffect(() => setHint("Pull the cord"), [setHint]);
+  useEffect(() => setHint(t.hints.cord), [setHint, t]);
 
   useEffect(() => {
     const c = canvas.current;
@@ -113,7 +113,7 @@ export function DiscoScene({ reduced, sfx, confetti, setHint, finish }: ScenePro
       </div>
       <canvas ref={canvas} className="disco-canvas" aria-hidden="true" />
       <div className="disco-floor" aria-hidden="true" />
-      <button className="disco-cord" onClick={pull} aria-label="Pull the cord">
+      <button className="disco-cord" onClick={pull} aria-label={t.aria.cord}>
         <span className="cord-line" />
         <span className="cord-bead" />
       </button>

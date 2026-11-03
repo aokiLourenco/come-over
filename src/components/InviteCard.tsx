@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { formatDay, formatTimeRange, googleCalendarUrl, mapUrl } from "@/lib/format";
-import type { PublicInvite } from "@/lib/types";
+import { buildIcs, formatDay, formatTimeRange, googleCalendarUrl, mapUrl } from "@/lib/format";
+import { STRINGS, type Lang, type Strings } from "@/lib/i18n";
+import type { InviteInput } from "@/lib/types";
 
 export type CardData = Pick<
-  PublicInvite,
-  | "title" | "host" | "theme" | "startLocal" | "endLocal" | "venue" | "address" | "addressHidden"
-  | "message" | "dressCode" | "bring" | "songUrl" | "goingNames" | "goingCount" | "isOver"
-> & { photoUrl: string | null };
+  InviteInput,
+  "title" | "host" | "theme" | "startLocal" | "endLocal" | "venue" | "address" | "message" | "dressCode" | "bring" | "songUrl"
+>;
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -19,120 +19,115 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function songLabel(url: string) {
+function songLabel(url: string, t: Strings) {
   try {
     const host = new URL(url).hostname.replace(/^www\./, "");
-    if (host.includes("spotify")) return "Listen on Spotify";
-    if (host.includes("apple")) return "Listen on Apple Music";
-    if (host.includes("youtu")) return "Listen on YouTube";
+    if (host.includes("spotify")) return t.listen.spotify;
+    if (host.includes("apple")) return t.listen.apple;
+    if (host.includes("youtu")) return t.listen.youtube;
   } catch {}
-  return "Listen to the song";
+  return t.listen.other;
 }
 
-function Countdown({ startUtc }: { startUtc?: string }) {
+function Countdown({ startUtc, t }: { startUtc?: string; t: Strings }) {
   const [text, setText] = useState("");
   useEffect(() => {
     if (!startUtc) return;
     const days = Math.ceil((new Date(startUtc).getTime() - Date.now()) / 86_400_000);
-    if (days > 1) setText(`${days} days to go`);
-    else if (days === 1) setText("That's tomorrow");
-    else if (days === 0) setText("That's today");
-  }, [startUtc]);
+    if (days > 1) setText(t.daysToGo(days));
+    else if (days === 1) setText(t.tomorrow);
+    else if (days === 0) setText(t.today);
+  }, [startUtc, t]);
   return text ? <span className="fact-sub">{text}</span> : null;
 }
 
 export function InviteCard({
   data,
+  lang = "en",
   to,
   startUtc,
-  calendarIcsUrl,
+  calendar = false,
   children,
 }: {
   data: CardData;
+  lang?: Lang;
   to?: string;
   startUtc?: string;
-  calendarIcsUrl?: string;
+  calendar?: boolean;
   children?: ReactNode;
 }) {
+  const t = STRINGS[lang];
   const where = [data.venue, data.address].filter(Boolean).join(", ");
+  const details = t.hostedBy(data.host);
   const len = data.title.length;
+
+  function downloadIcs() {
+    const ics = buildIcs({ uid: `${data.startLocal}-${data.title.length}@come-over`, title: data.title, startLocal: data.startLocal, endLocal: data.endLocal, where, details });
+    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = t.calendarFile;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
   return (
-    <article className={`card theme-${data.theme}`}>
+    <article className={`card theme-${data.theme}`} lang={lang === "pt" ? "pt-BR" : "en"}>
       <div className="card-art" aria-hidden="true" />
       <header className="card-head">
-        <p className="card-kicker">{to ? `${to}, you're invited to` : "You're invited to"}</p>
-        <h1 className={`card-title ${len > 34 ? "is-long" : len > 18 ? "is-mid" : ""}`}>{data.title || "Your party"}</h1>
-        <p className="card-host">Hosted by {data.host || "you"}</p>
+        <p className="card-kicker">{t.kicker(to)}</p>
+        <h1 className={`card-title ${len > 34 ? "is-long" : len > 18 ? "is-mid" : ""}`}>{data.title || t.yourParty}</h1>
+        <p className="card-host">{t.hostedBy(data.host || t.you)}</p>
       </header>
-
-      {data.photoUrl && (
-        <div className="card-photo">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={data.photoUrl} alt="" />
-        </div>
-      )}
 
       {data.message && <p className="card-message">{data.message}</p>}
 
       <dl className="card-facts">
-        <Fact label="When">
+        <Fact label={t.when}>
           {data.startLocal ? (
             <>
-              <strong>{formatDay(data.startLocal)}</strong>
-              <span>{formatTimeRange(data.startLocal, data.endLocal)}</span>
-              <Countdown startUtc={startUtc} />
+              <strong>{formatDay(data.startLocal, lang)}</strong>
+              <span>{formatTimeRange(data.startLocal, data.endLocal, lang)}</span>
+              <Countdown startUtc={startUtc} t={t} />
             </>
           ) : (
-            <strong>Pick a date</strong>
+            <strong>{t.pickDate}</strong>
           )}
         </Fact>
-        {(data.venue || data.address || data.addressHidden) && (
-          <Fact label="Where">
+        {(data.venue || data.address) && (
+          <Fact label={t.where}>
             {data.venue && <strong>{data.venue}</strong>}
-            {data.addressHidden ? (
-              <span>Say you're coming to get the address.</span>
-            ) : (
-              data.address && (
-                <a href={mapUrl(data.address)} target="_blank" rel="noreferrer">
-                  {data.address}
-                </a>
-              )
+            {data.address && (
+              <a href={mapUrl(data.address)} target="_blank" rel="noreferrer">
+                {data.address}
+              </a>
             )}
           </Fact>
         )}
-        {data.dressCode && <Fact label="Wear">{data.dressCode}</Fact>}
-        {data.bring && <Fact label="Bring">{data.bring}</Fact>}
+        {data.dressCode && <Fact label={t.wear}>{data.dressCode}</Fact>}
+        {data.bring && <Fact label={t.bring}>{data.bring}</Fact>}
         {data.songUrl && (
-          <Fact label="Soundtrack">
+          <Fact label={t.soundtrack}>
             <a href={data.songUrl} target="_blank" rel="noreferrer noopener">
-              {songLabel(data.songUrl)}
+              {songLabel(data.songUrl, t)}
             </a>
           </Fact>
-        )}
-        {data.goingNames.length > 0 && (
-          <Fact label={`Going (${data.goingCount})`}>{data.goingNames.join(", ")}</Fact>
         )}
       </dl>
 
       {children}
 
-      {calendarIcsUrl && data.startLocal && !data.isOver && (
+      {calendar && data.startLocal && (
         <p className="card-calendar">
-          Add to calendar:{" "}
+          {t.calendar}{" "}
           <a
-            href={googleCalendarUrl({
-              title: data.title,
-              startLocal: data.startLocal,
-              endLocal: data.endLocal,
-              where,
-              details: `Hosted by ${data.host}`,
-            })}
+            href={googleCalendarUrl({ title: data.title, startLocal: data.startLocal, endLocal: data.endLocal, where, details })}
             target="_blank"
             rel="noreferrer"
           >
             Google
           </a>{" "}
-          or <a href={calendarIcsUrl}>Apple and Outlook</a>
+          {t.calendarOr} <button className="link-btn" onClick={downloadIcs}>{t.calendarOther}</button>
         </p>
       )}
     </article>

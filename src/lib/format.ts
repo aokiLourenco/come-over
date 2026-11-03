@@ -1,5 +1,7 @@
+import { LOCALES, type Lang } from "./i18n.ts";
+
 // Party times are wall-clock at the venue, so they're formatted from parts and never
-// shifted into the viewer's zone. en-US is fixed to keep server and client output equal.
+// shifted into the viewer's zone.
 
 function parts(local: string) {
   const [d, t = "00:00"] = local.split("T");
@@ -13,33 +15,28 @@ function asDate(local: string) {
   return new Date(Date.UTC(y, m - 1, day, h, min));
 }
 
-export function formatDay(local: string) {
-  return asDate(local).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
+export function formatDay(local: string, lang: Lang = "en") {
+  return asDate(local).toLocaleDateString(LOCALES[lang], { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
 }
 
-export function formatShortDay(local: string) {
-  return asDate(local).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+export function formatShortDay(local: string, lang: Lang = "en") {
+  return asDate(local).toLocaleDateString(LOCALES[lang], { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-export function formatTime(local: string) {
+export function formatTime(local: string, lang: Lang = "en") {
+  const { h, min } = parts(local);
+  if (lang === "pt") return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
   return asDate(local)
     .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" })
     .replace(":00", "")
     .replace(/\s/, " ");
 }
 
-export function formatTimeRange(start: string, end: string) {
-  if (!end) return formatTime(start);
-  if (start.slice(0, 10) === end.slice(0, 10)) return `${formatTime(start)} to ${formatTime(end)}`;
-  return `${formatTime(start)} to ${formatShortDay(end)}, ${formatTime(end)}`;
-}
-
-export function monthDay(local: string) {
-  const d = asDate(local);
-  return {
-    month: d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }),
-    day: String(d.getUTCDate()),
-  };
+export function formatTimeRange(start: string, end: string, lang: Lang = "en") {
+  const to = lang === "pt" ? "até" : "to";
+  if (!end) return formatTime(start, lang);
+  if (start.slice(0, 10) === end.slice(0, 10)) return `${formatTime(start, lang)} ${to} ${formatTime(end, lang)}`;
+  return `${formatTime(start, lang)} ${to} ${formatShortDay(end, lang)}, ${formatTime(end, lang)}`;
 }
 
 const compact = (local: string) => local.replace(/[-:]/g, "") + "00";

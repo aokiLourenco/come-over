@@ -10,12 +10,12 @@ const DANCERS = [
   { x: 178, h: 186, d: 0.1, c: "#5B1E00" },
 ];
 
-export function DoorScene({ info, reduced, sfx, confetti, setHint, finish }: SceneProps) {
+export function DoorScene({ info, t, reduced, sfx, confetti, setHint, finish }: SceneProps) {
   const [knocks, setKnocks] = useState(0);
   const [open, setOpen] = useState(false);
   const later = useTimers();
 
-  useEffect(() => setHint("Knock three times"), [setHint]);
+  useEffect(() => setHint(t.hints.knock), [setHint, t]);
 
   function knock() {
     if (open || knocks >= 3) return;
@@ -24,7 +24,7 @@ export function DoorScene({ info, reduced, sfx, confetti, setHint, finish }: Sce
     setKnocks(n);
     sfx.play("knock");
     navigator.vibrate?.(30);
-    if (n < 3) return setHint(n === 1 ? "Two more" : "One more");
+    if (n < 3) return setHint(n === 1 ? t.hints.twoMore : t.hints.oneMore);
     setHint(null);
     later(650, () => {
       setOpen(true);
@@ -60,7 +60,7 @@ export function DoorScene({ info, reduced, sfx, confetti, setHint, finish }: Sce
           </svg>
         </div>
         <div className="door-persp">
-          <button className="door-leaf" onClick={knock} data-hit={knocks === 0 ? "none" : knocks % 2 ? "a" : "b"} aria-label={`Knock on the door, ${knocks} of 3`}>
+          <button className="door-leaf" onClick={knock} data-hit={knocks === 0 ? "none" : knocks % 2 ? "a" : "b"} aria-label={t.aria.knock(knocks)}>
             <svg viewBox="0 0 210 495" aria-hidden="true">
               <rect width="210" height="495" fill="var(--r)" />
               <rect x="26" y="26" width="158" height="118" rx="4" fill="var(--pane, #17103A)" stroke="var(--r-deep)" strokeWidth="6" />
@@ -72,7 +72,7 @@ export function DoorScene({ info, reduced, sfx, confetti, setHint, finish }: Sce
               <path d="M90 228a15 19 0 1 0 30 0" fill="none" stroke="#F4C542" strokeWidth="6" strokeLinecap="round" />
             </svg>
             <span className="door-note">
-              <em>{info.to ? `For ${info.to}` : "You're invited"}</em>
+              <em>{info.to ? t.noteFor(info.to) : t.noteInvited}</em>
             </span>
           </button>
         </div>
@@ -80,7 +80,7 @@ export function DoorScene({ info, reduced, sfx, confetti, setHint, finish }: Sce
       <div className="door-flood" aria-hidden="true" />
       <div className="door-floor" />
       <div className="door-mat" aria-hidden="true">
-        <span>come over</span>
+        <span>{t.mat}</span>
       </div>
     </div>
   );

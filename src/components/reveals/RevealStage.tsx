@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { colorById, type ColorId, type RevealId } from "@/lib/config";
+import { STRINGS, type Lang } from "@/lib/i18n";
 import { sfx } from "@/lib/sound";
 import { Confetti, type Burst, type ConfettiHandle } from "../Confetti";
 import { DiscoScene } from "./Disco";
@@ -26,6 +27,7 @@ export function RevealStage({
   color,
   info,
   card,
+  lang = "en",
   startOpen = false,
   onOpened,
   soundControl = true,
@@ -35,6 +37,7 @@ export function RevealStage({
   color: ColorId;
   info: SceneInfo;
   card: ReactNode;
+  lang?: Lang;
   startOpen?: boolean;
   onOpened?: () => void;
   soundControl?: boolean;
@@ -46,6 +49,7 @@ export function RevealStage({
   const [reduced, setReduced] = useState(false);
   const confetti = useRef<ConfettiHandle>(null);
   const c = colorById(color);
+  const t = STRINGS[lang];
 
   useEffect(() => {
     setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -86,7 +90,7 @@ export function RevealStage({
     >
       {arrival === null && (
         <SceneBox>
-          <Scene info={info} reduced={reduced} sfx={sfx} confetti={burst} setHint={setHint} finish={finish} />
+          <Scene info={info} lang={lang} t={t} reduced={reduced} sfx={sfx} confetti={burst} setHint={setHint} finish={finish} />
         </SceneBox>
       )}
       {arrival !== null && <div className={`stage-card arrive-${arrival}`}>{card}</div>}
@@ -96,11 +100,11 @@ export function RevealStage({
       </p>
       {arrival === null && (
         <button className="stage-skip" onClick={() => finish("fade")}>
-          Skip to the invite
+          {t.skip}
         </button>
       )}
       {soundControl && arrival === null && (
-        <button className="stage-sound" onClick={toggleSound} aria-pressed={muted} aria-label={muted ? "Turn sound on" : "Turn sound off"}>
+        <button className="stage-sound" onClick={toggleSound} aria-pressed={muted} aria-label={muted ? t.aria.soundOn : t.aria.soundOff}>
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" />
             {muted ? (

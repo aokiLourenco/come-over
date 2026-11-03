@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { REVEALS, type ColorId, type RevealId } from "@/lib/config";
 import { InviteCard, type CardData } from "./InviteCard";
@@ -28,15 +29,10 @@ function useSample(): CardData {
       endLocal: "",
       venue: "Maya's place",
       address: "",
-      addressHidden: true,
       message: "Cake, loud music, and everyone I like in one room. Be there.",
       dressCode: "Anything with sequins",
       bring: "",
       songUrl: "",
-      goingNames: [],
-      goingCount: 0,
-      isOver: false,
-      photoUrl: null,
     }),
     [],
   );
@@ -57,7 +53,7 @@ export function HeroDoor() {
         soundControl={false}
         card={
           <InviteCard data={sample}>
-            <Rsvp allowMaybe maxPlusOnes={1} preview />
+            <Rsvp lang="en" allowMaybe maxPlusOnes={1} preview />
           </InviteCard>
         }
       />
@@ -86,7 +82,7 @@ export function RevealDemo() {
             info={{ to: "", title: sample.title, host: sample.host, startLocal: sample.startLocal }}
             card={
               <InviteCard data={sample}>
-                <Rsvp allowMaybe maxPlusOnes={1} preview />
+                <Rsvp lang="en" allowMaybe maxPlusOnes={1} preview />
               </InviteCard>
             }
           />
@@ -105,7 +101,7 @@ export function RevealDemo() {
           ))}
         </ul>
         <p>{current.blurb}</p>
-        <a className="btn-main" href={`/create?reveal=${kind}`}>Use the {current.label}</a>
+        <Link className="btn-main" href={`/create/?reveal=${kind}`}>Use the {current.label}</Link>
       </div>
     </div>
   );

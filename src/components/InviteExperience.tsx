@@ -1,72 +1,83 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { BRAND } from "@/lib/config";
 import { formatDay } from "@/lib/format";
-import type { Guest, PublicInvite } from "@/lib/types";
+import { STRINGS } from "@/lib/i18n";
+import type { InviteInput, Reply } from "@/lib/types";
+import { localToUtc, partyIsOver, rsvpIsOpen } from "@/lib/validate";
 import { Confetti, type ConfettiHandle } from "./Confetti";
 import { InviteCard } from "./InviteCard";
 import { RevealStage } from "./reveals/RevealStage";
 import { Rsvp } from "./Rsvp";
 
-export function InviteExperience({ invite: initial, guest: initialGuest, to }: { invite: PublicInvite; guest: Guest | null; to: string }) {
-  const [invite, setInvite] = useState(initial);
-  const [guest, setGuest] = useState(initialGuest);
+export function InviteExperience({ invite, to, inviteKey }: { invite: InviteInput; to: string; inviteKey: string }) {
+  const t = STRINGS[invite.lang];
+  const replyKey = `reply:${inviteKey}`;
+  const [reply, setReply] = useState<Reply | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(replyKey) ?? "null");
+    } catch {
+      return null;
+    }
+  });
   const [run, setRun] = useState(0);
   const confetti = useRef<ConfettiHandle>(null);
 
   useEffect(() => {
-    const key = `viewed:${invite.id}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
-    void fetch(`/api/invites/${invite.id}/view`, { method: "POST" });
-  }, [invite.id]);
+    document.title = t.docTitle(invite.title);
+  }, [t, invite.title]);
 
-  const data = {
-    ...invite,
-    photoUrl: invite.hasPhoto ? `/api/photos/${invite.id}?v=${invite.photoVersion}` : null,
-  };
-
-  const closed = invite.isOver
-    ? "This party has already happened."
-    : invite.rsvpOpen
+  const closed = partyIsOver(invite)
+    ? t.over
+    : rsvpIsOpen(invite)
       ? null
-      : `Replies closed${invite.rsvpBy ? ` on ${formatDay(invite.rsvpBy)}` : ""}. Message ${invite.host} directly if your plans have changed.`;
+      : invite.rsvpBy
+        ? t.closedBy(formatDay(invite.rsvpBy, invite.lang), invite.host)
+        : t.closedStart(invite.host);
 
   const card = (
     <>
-      <InviteCard data={data} to={to} startUtc={invite.startUtc} calendarIcsUrl={`/i/${invite.id}/calendar.ics`}>
+      <InviteCard
+        data={invite}
+        lang={invite.lang}
+        to={to}
+        startUtc={localToUtc(invite.startLocal, invite.tzOffsetMin).toISOString()}
+        calendar={!partyIsOver(invite)}
+      >
         <Rsvp
+          lang={invite.lang}
           allowMaybe={invite.allowMaybe}
           maxPlusOnes={invite.maxPlusOnes}
           to={to}
-          inviteId={invite.id}
-          guest={guest}
+          invite={invite}
+          saved={reply}
           closed={closed}
-          onSaved={(g, v) => {
-            setGuest(g);
-            setInvite(v);
-            if (g.status === "yes") confetti.current?.burst({ x: 0.5, y: 0.8, count: 150, power: 17 });
+          onSaved={(r) => {
+            setReply(r);
+            localStorage.setItem(replyKey, JSON.stringify(r));
+            if (r.status === "yes") confetti.current?.burst({ x: 0.5, y: 0.8, count: 150, power: 17 });
           }}
         />
       </InviteCard>
-      <footer className="invite-foot">
-        <button onClick={() => setRun((r) => r + 1)}>Watch it again</button>
-        <a href="/create">Make your own invite</a>
+      <footer className={`invite-foot theme-${invite.theme}`}>
+        <button onClick={() => setRun((r) => r + 1)}>{t.watchAgain}</button>
+        <Link href={`/create/?lang=${invite.lang}`}>{t.makeYourOwn}</Link>
       </footer>
     </>
   );
 
   return (
-    <main className={`invite-page backdrop-${invite.theme}`} aria-label={`Invite from ${BRAND}`}>
+    <main className={`invite-page backdrop-${invite.theme}`}>
       <div className="invite-phone">
         <RevealStage
           key={run}
           kind={invite.reveal}
           color={invite.color}
+          lang={invite.lang}
           info={{ to, title: invite.title, host: invite.host, startLocal: invite.startLocal }}
           card={card}
-          startOpen={run === 0 && Boolean(guest)}
+          startOpen={run === 0 && Boolean(reply)}
         />
         <Confetti ref={confetti} />
       </div>

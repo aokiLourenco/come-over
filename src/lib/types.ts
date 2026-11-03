@@ -1,56 +1,31 @@
 import type { ColorId, OccasionId, RevealId, ThemeId } from "./config.ts";
+import type { Lang, Status } from "./i18n.ts";
 
-export type RsvpStatus = "yes" | "maybe" | "no";
+export type { Status };
 
-/** Everything the host fills in. Dates are wall-clock at the party, never converted. */
+/** The whole invite. It travels encrypted inside the link, so there is no server copy. */
 export type InviteInput = {
+  lang: Lang;
   occasion: OccasionId;
   reveal: RevealId;
   color: ColorId;
   theme: ThemeId;
   title: string;
   host: string;
-  startLocal: string; // 2026-11-14T20:00
+  startLocal: string; // 2026-11-14T20:00, wall-clock at the party
   endLocal: string; // "" when open-ended
   tzOffsetMin: number; // JS getTimezoneOffset() at startLocal
   venue: string;
   address: string;
-  hideAddress: boolean;
   message: string;
   dressCode: string;
   bring: string;
   songUrl: string;
   allowMaybe: boolean;
   maxPlusOnes: number;
-  showGuestList: boolean;
   rsvpBy: string; // 2026-11-10 or ""
+  rsvpPhone: string; // digits with country code, or ""
+  rsvpEmail: string;
 };
 
-export type Invite = InviteInput & {
-  id: string;
-  manageToken: string;
-  hasPhoto: boolean;
-  photoVersion: number;
-  views: number;
-  createdAt: string;
-};
-
-export type Guest = {
-  id: string;
-  name: string;
-  status: RsvpStatus;
-  plusOnes: number;
-  note: string;
-  updatedAt: string;
-};
-
-/** What a guest is allowed to see. Built only by toPublicInvite(). */
-export type PublicInvite = Omit<Invite, "manageToken" | "views" | "tzOffsetMin" | "address" | "hideAddress"> & {
-  address: string;
-  addressHidden: boolean;
-  startUtc: string;
-  rsvpOpen: boolean;
-  isOver: boolean;
-  goingNames: string[];
-  goingCount: number;
-};
+export type Reply = { name: string; status: Status; plusOnes: number; note: string };

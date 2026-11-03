@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatShortDay, formatTime } from "@/lib/format";
 import { useTimers, type SceneProps } from "./shared";
 
-export function TicketScene({ info, reduced, sfx, confetti, setHint, finish }: SceneProps) {
+export function TicketScene({ info, lang, t, reduced, sfx, confetti, setHint, finish }: SceneProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [cleared, setCleared] = useState(false);
   const done = useRef(false);
@@ -14,7 +14,7 @@ export function TicketScene({ info, reduced, sfx, confetti, setHint, finish }: S
   const lastCheck = useRef(0);
   const later = useTimers();
 
-  useEffect(() => setHint("Scratch the foil"), [setHint]);
+  useEffect(() => setHint(t.hints.foil), [setHint, t]);
 
   useEffect(() => {
     const c = canvas.current;
@@ -42,10 +42,10 @@ export function TicketScene({ info, reduced, sfx, confetti, setHint, finish }: S
       ctx.fillStyle = "rgba(40,44,60,.72)";
       ctx.font = "26px Shrikhand, serif";
       ctx.textAlign = "center";
-      ctx.fillText("Scratch here", 150, 104);
+      ctx.fillText(t.scratchHere, 150, 104);
     };
     document.fonts.load("26px Shrikhand").then(label, label);
-  }, []);
+  }, [t]);
 
   function reveal() {
     if (done.current) return;
@@ -106,15 +106,15 @@ export function TicketScene({ info, reduced, sfx, confetti, setHint, finish }: S
     <div className="ticket-scene" data-cleared={cleared}>
       <div className="ticket">
         <div className="ticket-head">
-          <span>Admit {info.to || "one"}</span>
+          <span>{t.ticketAdmit(info.to)}</span>
           <span>No. 0{(info.title.length * 37 + 101) % 900}</span>
         </div>
         <div className="ticket-win">
           <div className="ticket-prize">
-            <strong>{info.title || "Your party"}</strong>
+            <strong>{info.title || t.yourParty}</strong>
             {info.startLocal && (
               <span>
-                {formatShortDay(info.startLocal)}, {formatTime(info.startLocal)}
+                {formatShortDay(info.startLocal, lang)}, {formatTime(info.startLocal, lang)}
               </span>
             )}
           </div>
@@ -123,7 +123,7 @@ export function TicketScene({ info, reduced, sfx, confetti, setHint, finish }: S
             className="ticket-foil"
             role="button"
             tabIndex={0}
-            aria-label="Scratch off the foil"
+            aria-label={t.aria.foil}
             onPointerDown={start}
             onPointerMove={(e) => down.current && scratch(e)}
             onPointerUp={() => (down.current = false)}
@@ -137,7 +137,7 @@ export function TicketScene({ info, reduced, sfx, confetti, setHint, finish }: S
             }}
           />
         </div>
-        <div className="ticket-foot">{info.host ? `Hosted by ${info.host}` : "Hosted by you"}</div>
+        <div className="ticket-foot">{t.hostedBy(info.host || t.you)}</div>
       </div>
     </div>
   );

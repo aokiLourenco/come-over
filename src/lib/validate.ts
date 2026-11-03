@@ -1,7 +1,8 @@
 import { COLORS, LIMITS, OCCASIONS, REVEALS, THEMES } from "./config.ts";
-import type { InviteInput, RsvpStatus } from "./types.ts";
+import type { ErrorKey } from "./i18n.ts";
+import type { InviteInput } from "./types.ts";
 
-type Result<T> = { ok: true; value: T } | { ok: false; error: string; field?: string };
+type Result<T> = { ok: true; value: T } | { ok: false; error: ErrorKey; field?: string };
 
 const LOCAL_DT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const LOCAL_D = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,7 +31,7 @@ function isRealLocal(local: string): boolean {
 }
 
 export function parseInvite(raw: unknown, opts: { now?: Date; allowPast?: boolean } = {}): Result<InviteInput> {
-  if (typeof raw !== "object" || raw === null) return { ok: false, error: "The invite data is missing." };
+  if (typeof raw !== "object" || raw === null) return { ok: false, error: "missing" };
   const r = raw as Record<string, unknown>;
   const now = opts.now ?? new Date();
 
@@ -39,43 +40,43 @@ export function parseInvite(raw: unknown, opts: { now?: Date; allowPast?: boolea
   const color = oneOf(r.color, COLORS);
   const theme = oneOf(r.theme, THEMES);
   if (!occasion || !reveal || !color || !theme) {
-    return { ok: false, error: "Pick an occasion, a reveal, a color and a card design." };
+    return { ok: false, error: "choices" };
   }
 
   const title = str(r.title, LIMITS.title);
-  if (!title) return { ok: false, error: "Give the party a name.", field: "title" };
+  if (!title) return { ok: false, error: "title", field: "title" };
   const host = str(r.host, LIMITS.host);
-  if (!host) return { ok: false, error: "Add who's hosting.", field: "host" };
+  if (!host) return { ok: false, error: "host", field: "host" };
 
   const startLocal = str(r.startLocal, 16);
   if (!LOCAL_DT.test(startLocal) || !isRealLocal(startLocal)) {
-    return { ok: false, error: "Add the date and start time.", field: "startLocal" };
+    return { ok: false, error: "start", field: "startLocal" };
   }
   const tzOffsetMin = Number(r.tzOffsetMin);
   if (!Number.isInteger(tzOffsetMin) || Math.abs(tzOffsetMin) > 14 * 60) {
-    return { ok: false, error: "The party's time zone couldn't be read. Reload and try again." };
+    return { ok: false, error: "timezone" };
   }
   if (!opts.allowPast && localToUtc(startLocal, tzOffsetMin) <= now) {
-    return { ok: false, error: "That date has passed. Pick one in the future.", field: "startLocal" };
+    return { ok: false, error: "past", field: "startLocal" };
   }
 
   const endLocal = str(r.endLocal, 16);
   if (endLocal) {
     if (!LOCAL_DT.test(endLocal) || !isRealLocal(endLocal)) {
-      return { ok: false, error: "That end time isn't valid.", field: "endLocal" };
+      return { ok: false, error: "end", field: "endLocal" };
     }
     if (endLocal <= startLocal) {
-      return { ok: false, error: "The end time needs to be after the start time.", field: "endLocal" };
+      return { ok: false, error: "endBefore", field: "endLocal" };
     }
   }
 
   const rsvpBy = str(r.rsvpBy, 10);
   if (rsvpBy) {
     if (!LOCAL_D.test(rsvpBy) || !isRealLocal(`${rsvpBy}T00:00`)) {
-      return { ok: false, error: "That RSVP date isn't valid.", field: "rsvpBy" };
+      return { ok: false, error: "rsvpBy", field: "rsvpBy" };
     }
     if (rsvpBy > startLocal.slice(0, 10)) {
-      return { ok: false, error: "The RSVP date needs to be on or before the party.", field: "rsvpBy" };
+      return { ok: false, error: "rsvpAfter", field: "rsvpBy" };
     }
   }
 
@@ -86,15 +87,24 @@ export function parseInvite(raw: unknown, opts: { now?: Date; allowPast?: boolea
       const u = new URL(songUrl);
       ok = u.protocol === "https:" || u.protocol === "http:";
     } catch {}
-    if (!ok) return { ok: false, error: "Paste a full song link starting with https://", field: "songUrl" };
+    if (!ok) return { ok: false, error: "song", field: "songUrl" };
   }
 
-  const address = str(r.address, LIMITS.address);
+  const digits = str(r.rsvpPhone, 32).replace(/\D/g, "");
+  if (digits && (digits.length < 8 || digits.length > 15)) {
+    return { ok: false, error: "phone", field: "rsvpPhone" };
+  }
+  const rsvpEmail = str(r.rsvpEmail, 120);
+  if (rsvpEmail && !/^[^\s@?&#]+@[^\s@?&#]+\.[^\s@?&#]+$/.test(rsvpEmail)) {
+    return { ok: false, error: "email", field: "rsvpEmail" };
+  }
+
   const maxPlusOnes = Math.min(LIMITS.maxPlusOnes, Math.max(0, Math.trunc(Number(r.maxPlusOnes) || 0)));
 
   return {
     ok: true,
     value: {
+      lang: r.lang === "pt" ? "pt" : "en",
       occasion,
       reveal,
       color,
@@ -105,50 +115,27 @@ export function parseInvite(raw: unknown, opts: { now?: Date; allowPast?: boolea
       endLocal,
       tzOffsetMin,
       venue: str(r.venue, LIMITS.venue),
-      address,
-      hideAddress: Boolean(r.hideAddress) && Boolean(address),
+      address: str(r.address, LIMITS.address),
       message: str(r.message, LIMITS.message),
       dressCode: str(r.dressCode, LIMITS.dressCode),
       bring: str(r.bring, LIMITS.bring),
       songUrl,
       allowMaybe: r.allowMaybe !== false,
       maxPlusOnes,
-      showGuestList: Boolean(r.showGuestList),
       rsvpBy,
+      rsvpPhone: digits,
+      rsvpEmail,
     },
   };
 }
 
-export function parseRsvp(
-  raw: unknown,
-  invite: { allowMaybe: boolean; maxPlusOnes: number },
-): Result<{ name: string; status: RsvpStatus; plusOnes: number; note: string }> {
-  if (typeof raw !== "object" || raw === null) return { ok: false, error: "The RSVP is missing." };
-  const r = raw as Record<string, unknown>;
-  const name = str(r.name, LIMITS.guestName);
-  if (!name) return { ok: false, error: "Add your name so the host knows who's coming.", field: "name" };
-  const status = r.status;
-  if (status !== "yes" && status !== "no" && !(status === "maybe" && invite.allowMaybe)) {
-    return { ok: false, error: "Choose whether you're coming.", field: "status" };
-  }
-  const wanted = Math.trunc(Number(r.plusOnes) || 0);
-  const plusOnes = status === "no" ? 0 : Math.min(invite.maxPlusOnes, Math.max(0, wanted));
-  return { ok: true, value: { name, status, plusOnes, note: str(r.note, LIMITS.guestNote) } };
+export function rsvpIsOpen(invite: Pick<InviteInput, "startLocal" | "rsvpBy" | "tzOffsetMin">, now = new Date()): boolean {
+  if (localToUtc(invite.startLocal, invite.tzOffsetMin) <= now) return false;
+  if (invite.rsvpBy && localToUtc(`${invite.rsvpBy}T23:59`, invite.tzOffsetMin) < now) return false;
+  return true;
 }
 
-/** Accepts a data URL from the browser. Only real JPEG, PNG or WebP bytes get through. */
-export function parsePhoto(dataUrl: unknown): Result<{ bytes: Buffer; type: string }> {
-  if (typeof dataUrl !== "string") return { ok: false, error: "That photo couldn't be read.", field: "photo" };
-  const m = /^data:image\/(jpeg|png|webp);base64,(.+)$/.exec(dataUrl);
-  if (!m) return { ok: false, error: "Use a JPEG, PNG or WebP photo.", field: "photo" };
-  const bytes = Buffer.from(m[2], "base64");
-  if (bytes.length > LIMITS.photoBytes) {
-    return { ok: false, error: "That photo is too large. Use one under 3 MB.", field: "photo" };
-  }
-  const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
-  const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
-  const isWebp = bytes.subarray(0, 4).toString("latin1") === "RIFF" && bytes.subarray(8, 12).toString("latin1") === "WEBP";
-  const expected = m[1] === "jpeg" ? isJpeg : m[1] === "png" ? isPng : isWebp;
-  if (!expected) return { ok: false, error: "That file isn't a real image.", field: "photo" };
-  return { ok: true, value: { bytes, type: `image/${m[1]}` } };
+export function partyIsOver(invite: Pick<InviteInput, "startLocal" | "endLocal" | "tzOffsetMin">, now = new Date()): boolean {
+  const end = localToUtc(invite.endLocal || invite.startLocal, invite.tzOffsetMin);
+  return end.getTime() + 12 * 3600_000 < now.getTime();
 }

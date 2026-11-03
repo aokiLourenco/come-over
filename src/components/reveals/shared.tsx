@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Burst } from "../Confetti";
+import type { Lang, Strings } from "@/lib/i18n";
 import type { sfx } from "@/lib/sound";
 
 export type Arrival = "zoom" | "drop" | "rise" | "fade";
@@ -10,6 +11,8 @@ export type SceneInfo = { to: string; title: string; host: string; startLocal: s
 
 export type SceneProps = {
   info: SceneInfo;
+  lang: Lang;
+  t: Strings;
   reduced: boolean;
   sfx: typeof sfx;
   confetti: (b: Burst) => void;

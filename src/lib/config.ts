@@ -19,7 +19,7 @@ export const REVEALS: { id: RevealId; label: string; blurb: string }[] = [
   { id: "popper", label: "Party Popper", blurb: "They pull the string. Bang, confetti, and the invite shoots out." },
   { id: "envelope", label: "Wax Seal", blurb: "They crack the seal, the flap lifts and the invite slides out." },
   { id: "disco", label: "Disco Ball", blurb: "They pull the cord in a dark room. The ball drops and the lights start." },
-  { id: "ticket", label: "Scratch Ticket", blurb: "They scratch the foil off a ticket with their name on the list." },
+  { id: "ticket", label: "Scratch Ticket", blurb: "They scratch the foil off a ticket to find out they're on the list." },
 ];
 
 export const COLORS: { id: ColorId; label: string; hex: string; deep: string; wall: string; floor: string }[] = [
@@ -191,7 +191,6 @@ export const LIMITS = {
   guestName: 60,
   guestNote: 200,
   maxPlusOnes: 5,
-  photoBytes: 3 * 1024 * 1024,
 };
 
 export function occasionById(id: string) {

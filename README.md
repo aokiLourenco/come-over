@@ -1,7 +1,11 @@
 # Come Over
 
 Party invites your guests open by hand. Pick a party and a reveal, add the details, and send
-one link. Guests knock on a door or smash a piñata, then RSVP. No app or account for anyone.
+a link and a 4-digit door code. Guests type the code, knock on a door or smash a piñata, then
+reply on WhatsApp, text or email. No app or account for anyone. Available in English and
+Portuguese.
+
+**Live site:** https://aokilourenco.github.io/come-over/
 
 ![The six reveals](docs/reveals.png)
 
@@ -12,41 +16,45 @@ Needs Node 22.13 or newer.
 ```sh
 npm install
 npm run dev        # http://localhost:3000
+npm test           # door codes, encryption, validation, translations, calendar output
+npm run typecheck
 ```
+
+## Publish it
 
 ```sh
-npm test           # validation, address privacy, RSVP rules, calendar output
-npm run typecheck
-npm run build && npm start
+npm run deploy     # builds the site and pushes it to the gh-pages branch
 ```
 
-Invites are stored in SQLite at `data/come-over.db`. Set `DATABASE_PATH` to move it.
+The site path comes from the `origin` repo name.
 
 ## How it works
 
-| Page | What it does |
-| --- | --- |
-| `/` | Landing page with a live door and a demo of every reveal |
-| `/create` | Four steps: occasion, reveal, details, preview |
-| `/i/:id` | The guest's invite. `?to=Sam` greets them by name |
-| `/m/:token` | The host's private guest list, share links, edit and delete |
+The site is fully static, so GitHub Pages only serves empty pages and scripts.
 
-- There are no accounts. The host's secret is the `/m/:token` URL, and each guest gets an
-  httpOnly cookie that lets them change their own RSVP.
-- Guest-facing data is built in one place, `toPublicInvite()` in `src/lib/store.ts`. A hidden
-  address stays out of it until that guest has said yes. Pages, the RSVP response and the
-  calendar file all go through it.
-- Party times are wall-clock at the venue and are never converted to the viewer's time zone.
-- Reveals live in `src/components/reveals/`. Each is drawn on a fixed 390 x 780 board that
-  scales to its container. To add one, write a scene, register it in `RevealStage.tsx` and add
-  it to `REVEALS` in `src/lib/config.ts`.
-- All sound is synthesized in `src/lib/sound.ts`, so there are no audio files.
+- **The invite lives in the link.** `src/lib/seal.ts` compresses it and encrypts it with
+  AES-GCM, using a key derived from the door code. It sits in the URL fragment, which browsers
+  don't send to servers. Nothing about a party is ever stored online.
+- **Door code.** The wrong code fails to decrypt, so the guest never gets the details.
+  Decrypted data is validated like form input, because anyone can craft a link.
+- **RSVPs** open as a prefilled WhatsApp, text or email message to the host. If the host gave
+  no contact details, the guest copies their reply instead.
+- **Language** is chosen in the wizard and stored with the invite. All text is in
+  `src/lib/i18n.ts`, and the types require every English string to have a Portuguese one.
+- **Reveals** live in `src/components/reveals/`. To add one, write a scene on the 390 x 780
+  board, register it in `RevealStage.tsx` and add it to `REVEALS` in `src/lib/config.ts`.
 
-## Before you put it online
+## Limits of this version
 
-- It needs a server with a persistent disk (Fly.io, Railway, a VPS). Vercel's serverless
-  functions won't keep the SQLite file. To host there, reimplement `src/lib/store.ts` on Postgres.
-- Serve it over HTTPS. The guest cookie is `Secure` in production.
-- The rate limiter in `src/lib/rate-limit.ts` is per process and trusts `X-Forwarded-For`, so
-  run it behind a proxy that sets that header.
-- Invites and photos are kept until the host deletes them. There's no cleanup job yet.
+- **The door code stops casual snooping, not a determined attacker.** A static site can't limit
+  attempts, so someone with the link could try all 10,000 codes on their own computer. Don't
+  put anything in an invite that would be harmful if it got out.
+- **No shared guest list, open counts or photos.** They need a server, and photos don't fit in a link.
+- **Replies aren't confirmed.** An RSVP only reaches the host if the guest presses send in the
+  messaging app.
+- **Edits make a new link.** Links already sent keep the old details.
+- **Link previews are generic**, because the page can't see the invite.
+
+The `server-version` branch has the earlier Next.js and SQLite build, with a live guest list,
+photos and an address that stays hidden until a guest says yes. It needs a host with a
+persistent disk, such as Fly.io, Railway or a VPS.

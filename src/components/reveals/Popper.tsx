@@ -6,14 +6,14 @@ import { useTimers, type SceneProps } from "./shared";
 const THRESHOLD = 60;
 const MAX = 96;
 
-export function PopperScene({ reduced, sfx, confetti, setHint, finish }: SceneProps) {
+export function PopperScene({ t, reduced, sfx, confetti, setHint, finish }: SceneProps) {
   const [pull, setPull] = useState(0);
   const [popped, setPopped] = useState(false);
   const drag = useRef<{ y: number; scale: number } | null>(null);
   const moved = useRef(false);
   const later = useTimers();
 
-  useEffect(() => setHint("Pull the string"), [setHint]);
+  useEffect(() => setHint(t.hints.pull), [setHint, t]);
 
   function pop() {
     if (popped) return;
@@ -41,7 +41,7 @@ export function PopperScene({ reduced, sfx, confetti, setHint, finish }: ScenePr
     if (Math.abs(d) > 4) moved.current = true;
     const next = Math.max(0, Math.min(MAX, d));
     setPull(next);
-    setHint(next >= THRESHOLD ? "Let go" : "Pull the string");
+    setHint(next >= THRESHOLD ? t.hints.letGo : t.hints.pull);
   }
   function onUp() {
     if (!drag.current) return;
@@ -77,7 +77,7 @@ export function PopperScene({ reduced, sfx, confetti, setHint, finish }: ScenePr
         onPointerUp={onUp}
         onPointerCancel={() => { drag.current = null; setPull(0); }}
         onKeyDown={onKey}
-        aria-label="Pull the string"
+        aria-label={t.hints.pull}
       />
     </div>
   );

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "preview": "npx --yes serve out",
+    "deploy": "bash scripts/deploy.sh",
     "typecheck": "tsc --noEmit",
     "test": "node --test --no-warnings tests/*.test.ts"
   },

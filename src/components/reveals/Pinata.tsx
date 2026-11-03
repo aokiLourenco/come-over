@@ -60,14 +60,14 @@ const CRACKS = [
   "M-2 30 L-24 40 M6 -22 L28 -30",
 ];
 
-export function PinataScene({ reduced, sfx, confetti, setHint, finish }: SceneProps) {
+export function PinataScene({ t, reduced, sfx, confetti, setHint, finish }: SceneProps) {
   const [hits, setHits] = useState(0);
   const [split, setSplit] = useState(false);
   const swing = useRef<SVGGElement>(null);
   const motion = useRef({ a: 0.08, v: 0 });
   const later = useTimers();
 
-  useEffect(() => setHint("Tap to hit it"), [setHint]);
+  useEffect(() => setHint(t.hints.hit), [setHint, t]);
 
   // A damped pendulum, so each hit visibly adds to the swing.
   useEffect(() => {
@@ -97,7 +97,7 @@ export function PinataScene({ reduced, sfx, confetti, setHint, finish }: ScenePr
     confetti({ x: fromLeft ? 0.38 : 0.62, y: 0.44, count: 14, angle: fromLeft ? 200 : -20, spread: 60, power: 7 });
     if (n < HITS) {
       sfx.play("whack");
-      return setHint(["Harder", "It's cracking", "One more"][n - 1]);
+      return setHint([t.hints.harder, t.hints.cracking, t.hints.oneMore][n - 1]);
     }
     setHint(null);
     sfx.play("crack");
@@ -136,7 +136,7 @@ export function PinataScene({ reduced, sfx, confetti, setHint, finish }: ScenePr
           </g>
         </g>
       </svg>
-      <button className="scene-tap pinata-tap" onClick={hit} aria-label={`Hit the piñata, ${hits} of ${HITS} hits`} />
+      <button className="scene-tap pinata-tap" onClick={hit} aria-label={t.aria.hit(hits, HITS)} />
     </div>
   );
 }
